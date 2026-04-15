@@ -1,0 +1,133 @@
+{
+  "info": {
+    "_postman_id": "aiml-learning-api-collection",
+    "name": "AIML Learning API",
+    "description": "Complete API collection for the AIML Interactive Learning Prototype",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "description": "Check if API is running"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){ pm.collectionVariables.set('token', pm.response.json().token); }"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\": \"Test User\", \"email\": \"test@example.com\", \"password\": \"password123\"}" }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===200){ pm.collectionVariables.set('token', pm.response.json().token); }"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\": \"test@example.com\", \"password\": \"password123\"}" }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modules",
+      "item": [
+        {
+          "name": "Get All Modules",
+          "request": { "method": "GET", "url": "{{base_url}}/modules" }
+        },
+        {
+          "name": "Get Module By ID",
+          "request": { "method": "GET", "url": "{{base_url}}/modules/1" }
+        },
+        {
+          "name": "Get Module Progress",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/modules/1/progress",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get Quiz Questions",
+          "request": { "method": "GET", "url": "{{base_url}}/modules/1/questions" }
+        },
+        {
+          "name": "Submit Quiz",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/modules/1/quiz/submit",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"answers\": [{\"question_id\": 1, \"selected_answer\": \"The best feature to split on first\"}, {\"question_id\": 2, \"selected_answer\": \"Removing branches with little predictive value\"}, {\"question_id\": 3, \"selected_answer\": \"Gini Impurity\"}, {\"question_id\": 4, \"selected_answer\": \"Determining how much a split reduces entropy\"}, {\"question_id\": 5, \"selected_answer\": \"They are prone to overfitting with deep trees\"}]}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get User Progress",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/user/progress",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Update Progress",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/user/progress",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"module_id\": 1, \"completed\": true}" }
+          }
+        },
+        {
+          "name": "Get User Scores",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/user/scores",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}
