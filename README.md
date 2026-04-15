@@ -1,94 +1,71 @@
-# AIML Interactive Learning Prototype
+# get-intrinsic <sup>[![Version Badge][npm-version-svg]][package-url]</sup>
 
-A full-stack interactive web platform for learning core AI/ML concepts through simulations and quizzes.
+[![github actions][actions-image]][actions-url]
+[![coverage][codecov-image]][codecov-url]
+[![dependency status][deps-svg]][deps-url]
+[![dev dependency status][dev-deps-svg]][dev-deps-url]
+[![License][license-image]][license-url]
+[![Downloads][downloads-image]][downloads-url]
 
-## Tech Stack
+[![npm badge][npm-badge-png]][package-url]
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14 + TypeScript + Tailwind CSS |
-| Backend | Node.js + Express |
-| Database | MySQL 8.0 |
-| Auth | JWT (jsonwebtoken + bcryptjs) |
-| DevOps | Docker + Docker Compose |
+Get and robustly cache all JS language-level intrinsics at first require time.
 
-## Project Structure
+See the syntax described [in the JS spec](https://tc39.es/ecma262/#sec-well-known-intrinsic-objects) for reference.
 
-```
-vibethon-Cloak-Dagger-t107/
-├── backend/           # Node.js + Express API
-│   ├── src/
-│   │   ├── config/    # DB connection
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   └── server.js
-│   ├── migrations/    # SQL migration scripts
-│   ├── seeds/         # SQL seed data
-│   ├── .env
-│   └── Dockerfile
-├── frontend/          # Next.js app
-│   └── Dockerfile
-├── docker-compose.yml
-└── README.md
-```
+## Example
 
-## Quick Start (Docker)
+```js
+var GetIntrinsic = require('get-intrinsic');
+var assert = require('assert');
 
-```bash
-# Start all services (MySQL + Backend + Frontend)
-docker-compose up --build
+// static methods
+assert.equal(GetIntrinsic('%Math.pow%'), Math.pow);
+assert.equal(Math.pow(2, 3), 8);
+assert.equal(GetIntrinsic('%Math.pow%')(2, 3), 8);
+delete Math.pow;
+assert.equal(GetIntrinsic('%Math.pow%')(2, 3), 8);
 
-# API available at: http://localhost:5000/api
-# Frontend at:      http://localhost:3000
-```
+// instance methods
+var arr = [1];
+assert.equal(GetIntrinsic('%Array.prototype.push%'), Array.prototype.push);
+assert.deepEqual(arr, [1]);
 
-## Manual Setup
+arr.push(2);
+assert.deepEqual(arr, [1, 2]);
 
-### Backend
+GetIntrinsic('%Array.prototype.push%').call(arr, 3);
+assert.deepEqual(arr, [1, 2, 3]);
 
-```bash
-cd backend
-cp .env.example .env      # Fill in your MySQL credentials
-npm install
-npm run dev               # Runs with nodemon on port 5000
+delete Array.prototype.push;
+GetIntrinsic('%Array.prototype.push%').call(arr, 4);
+assert.deepEqual(arr, [1, 2, 3, 4]);
+
+// missing features
+delete JSON.parse; // to simulate a real intrinsic that is missing in the environment
+assert.throws(() => GetIntrinsic('%JSON.parse%'));
+assert.equal(undefined, GetIntrinsic('%JSON.parse%', true));
 ```
 
-### Database
+## Tests
+Simply clone the repo, `npm install`, and run `npm test`
 
-```bash
-# Run migrations and seeds against your MySQL instance
-mysql -u root -p < backend/migrations/001_create_tables.sql
-mysql -u root -p aiml_learning_db < backend/seeds/001_seed_modules.sql
-```
+## Security
 
-### Frontend
+Please email [@ljharb](https://github.com/ljharb) or see https://tidelift.com/security if you have a potential security vulnerability to report.
 
-```bash
-cd frontend
-cp .env.local.example .env.local
-npm install
-npm run dev               # Runs on port 3000
-```
-
-## API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/health` | — | Health check |
-| POST | `/api/auth/register` | — | Register user |
-| POST | `/api/auth/login` | — | Login + JWT |
-| GET | `/api/auth/me` | ✅ | Get current user |
-| GET | `/api/modules` | — | List all modules |
-| GET | `/api/modules/:id` | — | Get module detail |
-| GET | `/api/modules/:id/questions` | — | Get quiz questions |
-| GET | `/api/modules/:id/progress` | ✅ | Get module progress |
-| POST | `/api/modules/:id/quiz/submit` | ✅ | Submit quiz |
-| GET | `/api/user/progress` | ✅ | Get all user progress |
-| POST | `/api/user/progress` | ✅ | Update progress |
-| GET | `/api/user/scores` | ✅ | Get score history |
-
-## Learning Modules
-
-- **Module 1**: Decision Trees (Gini, Information Gain, Pruning, 5 quiz questions)
-- **Module 2**: Linear Regression (MSE, Gradient Descent, R², 5 quiz questions)
+[package-url]: https://npmjs.org/package/get-intrinsic
+[npm-version-svg]: https://versionbadg.es/ljharb/get-intrinsic.svg
+[deps-svg]: https://david-dm.org/ljharb/get-intrinsic.svg
+[deps-url]: https://david-dm.org/ljharb/get-intrinsic
+[dev-deps-svg]: https://david-dm.org/ljharb/get-intrinsic/dev-status.svg
+[dev-deps-url]: https://david-dm.org/ljharb/get-intrinsic#info=devDependencies
+[npm-badge-png]: https://nodei.co/npm/get-intrinsic.png?downloads=true&stars=true
+[license-image]: https://img.shields.io/npm/l/get-intrinsic.svg
+[license-url]: LICENSE
+[downloads-image]: https://img.shields.io/npm/dm/get-intrinsic.svg
+[downloads-url]: https://npm-stat.com/charts.html?package=get-intrinsic
+[codecov-image]: https://codecov.io/gh/ljharb/get-intrinsic/branch/main/graphs/badge.svg
+[codecov-url]: https://app.codecov.io/gh/ljharb/get-intrinsic/
+[actions-image]: https://img.shields.io/endpoint?url=https://github-actions-badge-u3jn4tfpocch.runkit.sh/ljharb/get-intrinsic
+[actions-url]: https://github.com/ljharb/get-intrinsic/actions
