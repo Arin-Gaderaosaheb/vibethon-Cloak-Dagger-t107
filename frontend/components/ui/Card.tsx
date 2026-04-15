@@ -7,6 +7,7 @@ interface CardProps {
   hover?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
+  style?: React.CSSProperties;
 }
 
 export default function Card({
@@ -15,12 +16,14 @@ export default function Card({
   hover = true,
   padding = 'md',
   onClick,
+  style,
 }: CardProps) {
   const padClass = { none: '', sm: 'p-4', md: 'p-6', lg: 'p-8' }[padding];
   return (
     <div
       className={clsx('card', padClass, !hover && '[&:hover]:transform-none [&:hover]:border-[var(--color-border)] [&:hover]:shadow-[var(--shadow-card)]', onClick && 'cursor-pointer', className)}
       onClick={onClick}
+      style={style}
     >
       {children}
     </div>

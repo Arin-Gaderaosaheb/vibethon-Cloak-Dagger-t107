@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Backend ───────────────────────────────────────────────────
+  backend:
+    name: Backend Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax
+        run: node --check src/server.js src/config/db.js src/controllers/authController.js src/controllers/moduleController.js src/controllers/quizController.js src/controllers/userController.js
+
+      - name: Verify all required files exist
+        run: |
+          test -f src/server.js
+          test -f src/config/db.js
+          test -f src/middleware/auth.js
+          test -f src/middleware/errorHandler.js
+          test -f src/routes/auth.js
+          test -f src/routes/modules.js
+          test -f src/routes/user.js
+          test -f migrations/001_create_tables.sql
+          test -f seeds/001_seed_modules.sql
+          echo "✅ All backend files verified"
+
+  # ─── Frontend ──────────────────────────────────────────────────
+  frontend:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000/api
