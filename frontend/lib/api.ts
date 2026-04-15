@@ -64,4 +64,9 @@ export const userAPI = {
   getScores: () => api.get('/user/scores'),
 };
 
+// ─── Playground ───────────────────────────────────────────────
+export const playgroundAPI = {
+  executeCode: (code: string) => api.post('/playground/execute', { code }),
+};
+
 export default api;

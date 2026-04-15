@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import {
-  LayoutDashboard, BookOpen, Trophy, LogOut, Brain, User, Zap, Gamepad2
+  LayoutDashboard, BookOpen, Trophy, LogOut, Brain, User, Zap, Gamepad2, Code2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/modules', icon: BookOpen, label: 'Modules' },
   { href: '/minigames', icon: Gamepad2, label: 'Mini Games' },
+  { href: '/playground', icon: Code2, label: 'Playground' },
   { href: '/scores', icon: Trophy, label: 'My Scores' },
 ];
 
