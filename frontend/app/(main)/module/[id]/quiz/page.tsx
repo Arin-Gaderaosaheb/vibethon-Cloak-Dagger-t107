@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { quizAPI } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, HelpCircle, Keyboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Question {
@@ -23,7 +23,7 @@ export default function QuizPage() {
   const [selected, setSelected] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [answered, setAnswered] = useState(false);
+  const [justAnswered, setJustAnswered] = useState(false);
 
   useEffect(() => {
     quizAPI.getQuestions(id as string)
@@ -34,18 +34,34 @@ export default function QuizPage() {
 
   const q = questions[currentQ];
   const progress = questions.length > 0 ? ((currentQ + 1) / questions.length) * 100 : 0;
-  const allAnswered = questions.every((q) => selected[q.id] !== undefined);
+  const allAnswered = questions.length > 0 && questions.every((q) => selected[q.id] !== undefined);
+  const isLocked = q ? selected[q.id] !== undefined : false;
 
-  const handleSelect = (option: string) => {
-    if (selected[q.id] !== undefined) return; // locked after selection
+  const handleSelect = useCallback((option: string) => {
+    if (!q || isLocked) return;
     setSelected((prev) => ({ ...prev, [q.id]: option }));
-    setAnswered(true);
-  };
+    setJustAnswered(true);
+    setTimeout(() => setJustAnswered(false), 300);
+  }, [q, isLocked]);
 
-  const handleNext = () => {
-    setAnswered(false);
-    setCurrentQ((c) => c + 1);
-  };
+  const handleNext = useCallback(() => {
+    if (currentQ < questions.length - 1) setCurrentQ((c) => c + 1);
+  }, [currentQ, questions.length]);
+
+  // Keyboard navigation: 1-4 to select options, Enter/ArrowRight to advance
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (['1','2','3','4'].includes(e.key) && q) {
+        const idx = parseInt(e.key) - 1;
+        if (idx < q.options.length) handleSelect(q.options[idx]);
+      }
+      if ((e.key === 'Enter' || e.key === 'ArrowRight') && isLocked && currentQ < questions.length - 1) {
+        handleNext();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [q, isLocked, currentQ, questions.length, handleSelect, handleNext]);
 
   const handleSubmit = async () => {
     try {
@@ -55,10 +71,8 @@ export default function QuizPage() {
         selected_answer: ans,
       }));
       const res = await quizAPI.submitQuiz(id as string, answers);
-      const result = res.data;
-      // Store result in sessionStorage for results page
-      sessionStorage.setItem(`quiz_result_${id}`, JSON.stringify(result));
-      toast.success(`Quiz submitted! Score: ${result.score}/${result.total}`);
+      sessionStorage.setItem(`quiz_result_${id}`, JSON.stringify(res.data));
+      toast.success(`Quiz submitted! Score: ${res.data.score}/${res.data.total} 🎯`);
       router.push(`/module/${id}/results`);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Submission failed');
@@ -69,7 +83,7 @@ export default function QuizPage() {
 
   if (loading) return (
     <MainLayout>
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ maxWidth: 680, margin: '0 auto', display: 'grid', gap: 16 }}>
         {[1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 160, borderRadius: 16 }} />)}
       </div>
     </MainLayout>
@@ -78,7 +92,7 @@ export default function QuizPage() {
   if (questions.length === 0) return (
     <MainLayout>
       <div style={{ textAlign: 'center', padding: 64 }}>
-        <HelpCircle size={48} color="var(--color-text-dim)" style={{ margin: '0 auto 16px' }} />
+        <HelpCircle size={48} color="var(--color-text-dim)" style={{ margin: '0 auto 16px', display: 'block' }} />
         <p style={{ color: 'var(--color-text-muted)' }}>No questions found for this module.</p>
       </div>
     </MainLayout>
@@ -87,6 +101,7 @@ export default function QuizPage() {
   return (
     <MainLayout>
       <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+        {/* Back */}
         <button
           onClick={() => router.back()}
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 14, marginBottom: 24 }}
@@ -96,29 +111,36 @@ export default function QuizPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk, sans-serif', color: 'var(--color-text)' }}>
               Module Quiz
             </h1>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-              {currentQ + 1} / {questions.length}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Keyboard hint */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+                <Keyboard size={12} color="var(--color-text-dim)" />
+                <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Press 1–4 to select</span>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                {currentQ + 1} / {questions.length}
+              </span>
+            </div>
           </div>
           <ProgressBar value={progress} showPercent={false} height={6} />
         </div>
 
-        {/* Question */}
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20 }}>
+        {/* Question Card */}
+        <Card key={currentQ} style={{ marginBottom: 16, animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 24 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
               background: 'var(--gradient-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 800, color: '#0d0f14',
+              fontSize: 15, fontWeight: 900, color: '#0d0f14',
             }}>
               {currentQ + 1}
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.6, paddingTop: 4 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.65, paddingTop: 6 }}>
               {q.question}
             </h2>
           </div>
@@ -126,39 +148,41 @@ export default function QuizPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {q.options.map((opt, i) => {
               const isSelected = selected[q.id] === opt;
-              const isLocked = selected[q.id] !== undefined;
+              const letter = String.fromCharCode(65 + i);
               return (
                 <button
                   key={i}
-                  id={`option-${i}`}
+                  id={`quiz-option-${i}`}
                   onClick={() => handleSelect(opt)}
                   disabled={isLocked}
                   style={{
                     width: '100%', textAlign: 'left', padding: '14px 18px',
-                    borderRadius: 12, border: '1.5px solid',
-                    borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
-                    background: isSelected ? 'rgba(245,197,24,0.1)' : 'var(--color-surface-2)',
-                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                    borderRadius: 12,
+                    border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: isSelected ? 'rgba(245,197,24,0.12)' : 'var(--color-surface-2)',
+                    color: 'var(--color-text)',
                     cursor: isLocked ? 'default' : 'pointer',
                     fontSize: 14, fontWeight: isSelected ? 600 : 400,
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    transition: 'all 0.2s ease',
-                    transform: !isLocked ? 'none' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    transition: 'all 0.18s ease',
+                    transform: isSelected && justAnswered ? 'scale(1.01)' : 'scale(1)',
+                    boxShadow: isSelected ? '0 0 0 1px rgba(245,197,24,0.2), 0 4px 12px rgba(245,197,24,0.1)' : 'none',
                   }}
-                  onMouseEnter={e => { if (!isLocked) (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(245,197,24,0.5)'; }}
-                  onMouseLeave={e => { if (!isLocked && !isSelected) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'; }}
                 >
+                  {/* Letter badge */}
                   <span style={{
-                    width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                     border: '2px solid', borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
                     background: isSelected ? 'var(--color-primary)' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: 12, fontWeight: 800,
                     color: isSelected ? '#0d0f14' : 'var(--color-text-dim)',
+                    transition: 'all 0.18s ease',
                   }}>
-                    {String.fromCharCode(65 + i)}
+                    {letter}
                   </span>
-                  {opt}
+                  <span style={{ flex: 1 }}>{opt}</span>
+                  {isSelected && <CheckCircle2 size={16} color="var(--color-primary)" />}
                 </button>
               );
             })}
@@ -167,22 +191,30 @@ export default function QuizPage() {
 
         {/* Navigation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {questions.map((_, i) => (
-              <div key={i} style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: selected[questions[i].id] !== undefined
-                  ? 'var(--color-primary)'
-                  : i === currentQ ? 'var(--color-surface-3)' : 'var(--color-surface-3)',
-                border: i === currentQ ? '2px solid var(--color-primary)' : '2px solid transparent',
-                transition: 'all 0.3s',
-              }} />
+          {/* Dot indicators */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {questions.map((q2, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentQ(i)}
+                style={{
+                  width: i === currentQ ? 20 : 10,
+                  height: 10, borderRadius: 5,
+                  background: selected[q2.id] !== undefined
+                    ? 'var(--color-primary)'
+                    : i === currentQ ? 'var(--color-surface-3)' : 'var(--color-surface-3)',
+                  border: i === currentQ ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  cursor: 'pointer', padding: 0,
+                  transition: 'all 0.3s ease',
+                }}
+              />
             ))}
           </div>
 
+          {/* Action button */}
           {currentQ < questions.length - 1 ? (
-            <Button onClick={handleNext} disabled={!selected[q.id]}>
-              Next Question →
+            <Button onClick={handleNext} disabled={!isLocked}>
+              Next →
             </Button>
           ) : (
             <Button
@@ -190,6 +222,7 @@ export default function QuizPage() {
               loading={submitting}
               disabled={!allAnswered}
               icon={<CheckCircle2 size={16} />}
+              style={{ minWidth: 140 }}
             >
               Submit Quiz
             </Button>
@@ -197,8 +230,11 @@ export default function QuizPage() {
         </div>
 
         {/* Answered count */}
-        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--color-text-dim)' }}>
-          {Object.keys(selected).length} of {questions.length} questions answered
+        <p style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: 'var(--color-text-dim)' }}>
+          {Object.keys(selected).length} of {questions.length} answered
+          {isLocked && currentQ < questions.length - 1 && (
+            <span style={{ marginLeft: 8, color: 'var(--color-primary)' }}>· Press Enter or → to continue</span>
+          )}
         </p>
       </div>
     </MainLayout>
